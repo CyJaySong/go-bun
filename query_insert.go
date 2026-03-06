@@ -86,7 +86,6 @@ func (q *InsertQuery) WithQuery(query *WithQuery) *InsertQuery {
 	return q
 }
 
-
 //------------------------------------------------------------------------------
 
 // Table specifies the table(s) to insert into.
@@ -610,7 +609,7 @@ func (q *InsertQuery) scanOrExec(
 	}
 
 	// if a comment is propagated via the context, use it
-	setCommentFromContext(ctx, q)
+	setCommentFromContext[*InsertQuery](ctx, q)
 
 	// Generate the query before checking hasReturning.
 	queryBytes, err := q.AppendQuery(q.db.gen, q.db.makeQueryBytes())
