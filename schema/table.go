@@ -140,12 +140,12 @@ func (t *Table) processFields(typ reflect.Type) {
 		sf := typ.Field(i)
 		unexported := sf.PkgPath != ""
 
-		tagstr := sf.Tag.Get("bun")
-		if tagstr == "-" {
+		tagStr := sf.Tag.Get("bun")
+		if tagStr == "-" {
 			names[sf.Name] = struct{}{}
 			continue
 		}
-		tag := tagparser.Parse(tagstr)
+		tag := tagparser.Parse(tagStr)
 
 		if unexported && !sf.Anonymous { // unexported
 			continue
@@ -188,8 +188,8 @@ func (t *Table) processFields(typ reflect.Type) {
 				}
 			}
 
-			if tagstr != "" {
-				tag := tagparser.Parse(tagstr)
+			if tagStr != "" {
+				tag := tagparser.Parse(tagStr)
 				if tag.HasOption("inherit") || tag.HasOption("extend") {
 					t.Name = subtable.Name
 					t.TypeName = subtable.TypeName
