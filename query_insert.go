@@ -108,6 +108,12 @@ func (q *InsertQuery) ModelTableExpr(query string, args ...any) *InsertQuery {
 	return q
 }
 
+// TableAlias overrides the alias used for the model's table in this query.
+func (q *InsertQuery) TableAlias(alias string) *InsertQuery {
+	q.setTableAlias(alias)
+	return q
+}
+
 //------------------------------------------------------------------------------
 
 // Column adds columns to the INSERT statement's column list.
@@ -222,7 +228,7 @@ func (q *InsertQuery) AppendQuery(gen schema.QueryGen, b []byte) (_ []byte, err 
 	}
 	b = append(b, "INTO "...)
 
-	if q.db.HasFeature(feature.InsertTableAlias) && !q.on.IsZero() {
+	if (q.db.HasFeature(feature.InsertTableAlias) && !q.on.IsZero()) || q.hasExplicitTableAlias() {
 		b, err = q.appendFirstTableWithAlias(gen, b)
 	} else {
 		b, err = q.appendFirstTable(gen, b)

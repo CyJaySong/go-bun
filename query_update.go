@@ -114,6 +114,12 @@ func (q *UpdateQuery) ModelTableExpr(query string, args ...any) *UpdateQuery {
 	return q
 }
 
+// TableAlias overrides the alias used for the model's table in this query.
+func (q *UpdateQuery) TableAlias(alias string) *UpdateQuery {
+	q.setTableAlias(alias)
+	return q
+}
+
 //------------------------------------------------------------------------------
 
 // Column restricts the SET clause to the given model columns.
@@ -189,6 +195,31 @@ func (q *UpdateQuery) joinOn(cond string, args []any, sep string) *UpdateQuery {
 	}
 	j := &q.joins[len(q.joins)-1]
 	j.on = append(j.on, schema.SafeQueryWithSep(cond, args, sep))
+	return q
+}
+
+// JoinModel adds a JOIN clause on the model's table, using alias as the
+// table alias or the model's table alias when alias is omitted.
+//
+// If the model's table has a soft-delete field, an `alias.field IS NULL`
+// condition is appended to the join's ON clause. Use WhereAllWithDeleted
+// to include soft-deleted rows of the joined table.
+func (q *UpdateQuery) JoinModel(model any, alias ...string) *UpdateQuery {
+	return q.joinModel("JOIN", model, alias)
+}
+
+// LeftJoinModel is like JoinModel but emits a LEFT JOIN clause.
+func (q *UpdateQuery) LeftJoinModel(model any, alias ...string) *UpdateQuery {
+	return q.joinModel("LEFT JOIN", model, alias)
+}
+
+func (q *UpdateQuery) joinModel(kind string, model any, alias []string) *UpdateQuery {
+	j, err := newModelJoinQuery(q.db, kind, model, alias)
+	if err != nil {
+		q.setErr(err)
+		return q
+	}
+	q.joins = append(q.joins, j)
 	return q
 }
 
@@ -321,7 +352,7 @@ func (q *UpdateQuery) AppendQuery(gen schema.QueryGen, b []byte) (_ []byte, err 
 
 	if gen.HasFeature(feature.UpdateMultiTable) {
 		b, err = q.appendTablesWithAlias(gen, b)
-	} else if gen.HasFeature(feature.UpdateTableAlias) {
+	} else if gen.HasFeature(feature.UpdateTableAlias) || q.hasExplicitTableAlias() {
 		b, err = q.appendFirstTableWithAlias(gen, b)
 	} else {
 		b, err = q.appendFirstTable(gen, b)
@@ -348,7 +379,7 @@ func (q *UpdateQuery) AppendQuery(gen schema.QueryGen, b []byte) (_ []byte, err 
 	}
 
 	for _, j := range q.joins {
-		b, err = j.AppendQuery(gen, b)
+		b, err = j.AppendQuery(gen, b, q.flags)
 		if err != nil {
 			return nil, err
 		}
@@ -638,7 +669,8 @@ func (q *UpdateQuery) FQN(column string) Ident {
 }
 
 func (q *UpdateQuery) hasTableAlias(gen schema.QueryGen) bool {
-	return gen.HasFeature(feature.UpdateMultiTable | feature.UpdateTableAlias)
+	return gen.HasFeature(feature.UpdateMultiTable|feature.UpdateTableAlias) ||
+		q.hasExplicitTableAlias()
 }
 
 // String returns the generated SQL query string. The UpdateQuery instance must not be
